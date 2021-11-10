@@ -12,7 +12,7 @@ Scope function for GORM queries provides easy filtering with query parameters
 ## Usage
 
 ```(shell)
-go get github.com/activechoon/gin-gorm-filter
+go get github.com/ActiveChooN/gin-gorm-filter
 ```
 
 ## Model definition
