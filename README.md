@@ -12,7 +12,7 @@ Scope function for GORM queries provides easy filtering with query parameters
 ## Usage
 
 ```(shell)
-go get github.com/MagellanCL/gin-gorm-filter
+go get github.com/magellancl/gin-gorm-filter
 ```
 
 ## Model definition
