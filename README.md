@@ -9,6 +9,7 @@
 
 Scope function for GORM queries provides easy filtering with query parameters
 
+Fork dedicated to the usage of WiiSmile
 ## Usage
 
 ```(shell)
