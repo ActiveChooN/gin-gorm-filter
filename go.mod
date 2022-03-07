@@ -1,4 +1,4 @@
-module github.com/ActiveChooN/gin-gorm-filter
+module github.com/MagellanCL/gin-gorm-filter
 
 go 1.17
 
