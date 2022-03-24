@@ -9,7 +9,6 @@
 
 Scope function for GORM queries provides easy filtering with query parameters
 
-Fork dedicated to the usage of WiiSmile
 ## Usage
 
 ```(shell)
@@ -20,8 +19,8 @@ go get github.com/magellancl/gin-gorm-filter
 ```go
 type UserModel struct {
     gorm.Model
-    Username string `gorm:"uniqueIndex" filter:"param:login;searchable;filterable"`
-    FullName string `filter:"searchable"`
+    Username string `gorm:"uniqueIndex" filter:"filterable"`
+    FullName string
     Role     string `filter:"filterable"`
 }
 ```
@@ -35,18 +34,17 @@ func GetUsers(c *gin.Context) {
 	db, err := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
 	err := db.Model(&UserModel{}).Scopes(
 		filter.FilterByQuery(c, filter.ALL),
-	).Count(&usersCount).Find(&users).Error
+	).Scan(&users).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	serializer := serializers.PaginatedUsers{Users: users, Count: usersCount}
-	c.JSON(http.StatusOK, serializer.Response())
+
+	c.JSON(http.StatusOK, users)
 }
 ```
 Any filter combination can be used here `filter.PAGINATION|filter.ORDER_BY` e.g. **Important note:** GORM model should be initialize first for DB, otherwise filter and search won't work
 
 ## TODO list
 - [ ] Write tests for the lib with CI integration
-- [ ] Add ILIKE integration for PostgreSQL database
 - [ ] Add other filters, like > or !=
