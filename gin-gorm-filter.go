@@ -1,9 +1,9 @@
-// Copyright (c) 2021 ActiveChooN
+// Copyright (c) 2021 MagellanCL
 //
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package filter
+package daos
 
 import (
 	"net/url"
@@ -84,7 +84,7 @@ func getColumnNameForField(field reflect.StructField) string {
 	return ToSnakeCase(field.Name)
 }
 
-func filterField(field reflect.StructField, key string, value []string) clause.Expression {
+func filterField(field reflect.StructField, key string, value string, separator string) clause.Expression {
 	var paramName string
 	if !strings.Contains(field.Tag.Get(tagKey), "filterable") {
 		return nil
@@ -103,7 +103,22 @@ func filterField(field reflect.StructField, key string, value []string) clause.E
 		return nil
 	}
 
-	return clause.Eq{Column: columnName, Value: value[0]}
+	switch separator {
+	case eq:
+		return clause.Eq{Column: columnName, Value: value}
+	case neq:
+		return clause.Neq{Column: columnName, Value: value}
+	case gt:
+		return clause.Gt{Column: columnName, Value: value}
+	case gte:
+		return clause.Gte{Column: columnName, Value: value}
+	case lt:
+		return clause.Lt{Column: columnName, Value: value}
+	case lte:
+		return clause.Lte{Column: columnName, Value: value}
+	}
+
+	return nil
 }
 
 func expressionByField(
@@ -111,25 +126,63 @@ func expressionByField(
 ) *gorm.DB {
 	numFields := modelType.NumField()
 	expressions := make([]clause.Expression, 0, numFields)
-	for key, value := range values {
+	for key, array := range values {
 		if key != "limit" && key != "page" && key != "order_by" && key != "desc" {
-			// TODO : handle < > != etc
-			for i := 0; i < numFields; i++ {
-				field := modelType.Field(i)
-				expression := filterField(field, key, value)
-				if expression != nil {
-					expressions = append(expressions, expression)
+			for _, value := range array {
+				key, value, separator := getSeparator(key, value)
+				for i := 0; i < numFields; i++ {
+					field := modelType.Field(i)
+					expression := filterField(field, key, value, separator)
+					if expression != nil {
+						expressions = append(expressions, expression)
+					}
 				}
-			}
-			if len(expressions) == 1 {
-				db = db.Where(expressions[0])
-			} else if len(expressions) > 1 {
-				db = db.Where(clause.And(expressions...))
+				if len(expressions) == 1 {
+					db = db.Where(expressions[0])
+				} else if len(expressions) > 1 {
+					db = db.Where(clause.And(expressions...))
+				}
 			}
 		}
 	}
 
 	return db
+}
+
+const (
+	gte = ">="
+	gt  = ">"
+	lte = "<="
+	lt  = "<"
+	neq = "!="
+	eq  = "="
+)
+
+var Separators = []string{
+	gte,
+	gt,
+	lte,
+	lt,
+	neq,
+	eq,
+}
+
+func getSeparator(key, value string) (string, string, string) {
+	var arg string
+	if value == "" {
+		arg = key
+	} else {
+		arg = key + "=" + value
+	}
+
+	for _, separator := range Separators {
+		res := strings.SplitN(arg, separator, 2)
+		if len(res) > 1 {
+			return res[0], res[1], separator
+		}
+	}
+
+	return "", "", ""
 }
 
 // Filter DB request with query parameters.
