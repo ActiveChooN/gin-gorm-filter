@@ -6,6 +6,9 @@
 -->
 
 # Gin GORM filter
+![GitHub](https://img.shields.io/github/license/ActiveChooN/gin-gorm-filter)
+![GitHub branch checks state](https://img.shields.io/github/checks-status/ActiveChooN/gin-gorm-filter/master)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/ActiveChooN/gin-gorm-filter)
 
 Scope function for GORM queries provides easy filtering with query parameters
 
@@ -45,7 +48,12 @@ func GetUsers(c *gin.Context) {
 ```
 Any filter combination can be used here `filter.PAGINATION|filter.ORDER_BY` e.g. **Important note:** GORM model should be initialize first for DB, otherwise filter and search won't work
 
+## Request example
+```(shell)
+curl -X GET http://localhost:8080/users?page=1&limit=10&order_by=username&order_direction=asc&filter="name:John"
+```
+
 ## TODO list
-- [ ] Write tests for the lib with CI integration
+- [x] Write tests for the lib with CI integration
 - [ ] Add ILIKE integration for PostgreSQL database
 - [ ] Add other filters, like > or !=
