@@ -146,7 +146,10 @@ func expressionByField(
 func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		var params queryParams
-		c.BindQuery(&params)
+		err := c.BindQuery(&params)
+		if err != nil {
+			return db
+		}
 
 		model := db.Statement.Model
 		modelType := reflect.TypeOf(model)
