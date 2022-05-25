@@ -17,13 +17,13 @@ import (
 )
 
 type queryParams struct {
-	Search   string `form:"search"`
-	Filter   string `form:"filter"`
-	Page     int    `form:"page,default=1"`
-	PageSize int    `form:"page_size,default=10"`
-	All      bool   `form:"all,default=false"`
-	OrderBy  string `form:"order_by,default=id"`
-	Desc     bool   `form:"desc,default=true"`
+	Search         string `form:"search"`
+	Filter         string `form:"filter"`
+	Page           int    `form:"page,default=1"`
+	PageSize       int    `form:"page_size,default=10"`
+	All            bool   `form:"all,default=false"`
+	OrderBy        string `form:"order_by,default=id"`
+	OrderDirection string `form:"order_direction,default=desc,oneof=desc asc"`
 }
 
 const (
@@ -43,7 +43,7 @@ var (
 func orderBy(db *gorm.DB, params queryParams) *gorm.DB {
 	return db.Order(clause.OrderByColumn{
 		Column: clause.Column{Name: params.OrderBy},
-		Desc:   params.Desc},
+		Desc:   params.OrderDirection == "desc"},
 	)
 }
 
@@ -146,7 +146,10 @@ func expressionByField(
 func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		var params queryParams
-		c.BindQuery(&params)
+		err := c.BindQuery(&params)
+		if err != nil {
+			return db
+		}
 
 		model := db.Statement.Model
 		modelType := reflect.TypeOf(model)
