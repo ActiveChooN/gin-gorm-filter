@@ -150,7 +150,7 @@ func (s *TestSuite) TestFiltersOrderBy() {
 	ctx := gin.Context{}
 	ctx.Request = &http.Request{
 		URL: &url.URL{
-			RawQuery: "order_by=Email&desc=false",
+			RawQuery: "order_by=Email&order_direction=asc",
 		},
 	}
 
