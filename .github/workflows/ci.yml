@@ -51,6 +51,8 @@ jobs:
 
     - name: Run go staticcheck
       uses: dominikh/staticcheck-action@v1.2.0
+      with:
+        install-go: false
 
     - name: Run go lint
       uses: golangci/golangci-lint-action@v3
