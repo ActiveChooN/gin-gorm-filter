@@ -7,7 +7,7 @@
 
 # Gin GORM filter
 ![GitHub](https://img.shields.io/github/license/ActiveChooN/gin-gorm-filter)
-![GitHub branch checks state](https://img.shields.io/github/checks-status/ActiveChooN/gin-gorm-filter/master)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/ActiveChooN/gin-gorm-filter/CI/master)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/ActiveChooN/gin-gorm-filter)
 
 Scope function for GORM queries provides easy filtering with query parameters
