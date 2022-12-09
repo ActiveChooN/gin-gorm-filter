@@ -18,15 +18,16 @@ import (
 )
 
 type queryParams struct {
-	Filter  string `form:"filter"`
-	Page    int    `form:"page,default=1"`
-	Limit   int    `form:"limit,default=20"`
-	All     bool   `form:"all,default=false"`
-	OrderBy string `form:"order_by,default=id"`
-	Desc    bool   `form:"desc,default=true"`
+	Filter         string `form:"filter"`
+	Page           int    `form:"page,default=1"`
+	Limit          int    `form:"limit,default=20"`
+	All            bool   `form:"all,default=false"`
+	OrderBy        string `form:"order_by,default=created_at"`
+	OrderDirection string `form:"order_direction,default=desc,oneof=desc asc"`
 }
 
 const (
+	SEARCH   = 1  // Filter response with LIKE query "search={search_phrase}"
 	FILTER   = 2  // Filter response by column name values "filter={column_name}:{value}"
 	PAGINATE = 4  // Paginate response with page and page_size
 	ORDER_BY = 8  // Order response by column name
@@ -42,7 +43,7 @@ var (
 func orderBy(db *gorm.DB, params queryParams) *gorm.DB {
 	return db.Order(clause.OrderByColumn{
 		Column: clause.Column{Name: params.OrderBy},
-		Desc:   params.Desc},
+		Desc:   params.OrderDirection == "desc"},
 	)
 }
 
