@@ -22,6 +22,8 @@ type UserModel struct {
     Username string `gorm:"uniqueIndex" filter:"filterable"`
     FullName string
     Role     string `filter:"filterable"`
+	CreatedAt               time.Time      `filter:"filterable"`
+	UpdatedAt               time.Time      `filter:"filterable"`
 }
 ```
 `param` tag in that case defines custom column name for the query param
@@ -47,4 +49,4 @@ Any filter combination can be used here `filter.PAGINATION|filter.ORDER_BY` e.g.
 
 ## TODO list
 - [ ] Write tests for the lib with CI integration
-- [ ] Add other filters, like > or !=
+- [X] Add other filters, like > or !=

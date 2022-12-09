@@ -3,7 +3,7 @@
 // This software is released under the MIT License.
 // https://opensource.org/licenses/MIT
 
-package daos
+package filter
 
 import (
 	"net/url"
@@ -188,16 +188,21 @@ func getSeparator(key, value string) (string, string, string) {
 // Filter DB request with query parameters.
 // Note: Don't forget to initialize DB Model first, otherwise filter and search won't work
 // Example:
-//		db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.ALL)).Find(&users)
+//
+//	db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.ALL)).Find(&users)
+//
 // Or if only pagination and order is needed:
-//		db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.PAGINATION|filter.ORDER_BY)).Find(&users)
-// And models should have appropriate`fitler` tags:
-//		type User struct {
-//			gorm.Model
-//			Username string `gorm:"uniqueIndex" filter:"param:login;searchable;filterable"`
-//			// `param` defines custom column name for the query param
-//			FullName string `filter:"searchable"`
-//		}
+//
+//	db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.PAGINATION|filter.ORDER_BY)).Find(&users)
+//
+// And models should have appropriate`filter` tags:
+//
+//	type User struct {
+//		gorm.Model
+//		Username string `gorm:"uniqueIndex" filter:"param:login;searchable;filterable"`
+//		// `param` defines custom column name for the query param
+//		FullName string `filter:"searchable"`
+//	}
 func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		var params queryParams
