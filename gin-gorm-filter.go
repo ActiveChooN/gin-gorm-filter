@@ -136,7 +136,7 @@ func expressionByField(
 //		db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.ALL)).Find(&users)
 // Or if only pagination and order is needed:
 //		db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.PAGINATION|filter.ORDER_BY)).Find(&users)
-// And models should have appropriate`fitler` tags:
+// And models should have appropriate`filter` tags:
 //		type User struct {
 //			gorm.Model
 //			Username string `gorm:"uniqueIndex" filter:"param:login;searchable;filterable"`
