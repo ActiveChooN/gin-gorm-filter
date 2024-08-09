@@ -97,13 +97,26 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 	} else {
 		paramName = columnName
 	}
-	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v:(\w{1,}).*`, paramName))
+	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v([:<>!=]{1,2})(\w{1,}).*`, paramName))
 	if err != nil {
 		return nil
 	}
 	filterSubPhraseMatch := re.FindStringSubmatch(phrase)
-	if len(filterSubPhraseMatch) == 2 {
-		return clause.Eq{Column: columnName, Value: filterSubPhraseMatch[1]}
+	if len(filterSubPhraseMatch) == 3 {
+		switch filterSubPhraseMatch[1] {
+		case ">":
+			return clause.Gt{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case "<":
+			return clause.Lt{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case ">=":
+			return clause.Gte{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case "<=":
+			return clause.Lte{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case "!=":
+			return clause.Neq{Column: columnName, Value: filterSubPhraseMatch[2]}
+		default:
+			return clause.Eq{Column: columnName, Value: filterSubPhraseMatch[2]}
+		}
 	}
 	return nil
 }
@@ -133,16 +146,21 @@ func expressionByField(
 // Filter DB request with query parameters.
 // Note: Don't forget to initialize DB Model first, otherwise filter and search won't work
 // Example:
-//		db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.ALL)).Find(&users)
+//
+//	db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.ALL)).Find(&users)
+//
 // Or if only pagination and order is needed:
-//		db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.PAGINATION|filter.ORDER_BY)).Find(&users)
+//
+//	db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.PAGINATION|filter.ORDER_BY)).Find(&users)
+//
 // And models should have appropriate`filter` tags:
-//		type User struct {
-//			gorm.Model
-//			Username string `gorm:"uniqueIndex" filter:"param:login;searchable;filterable"`
-//			// `param` defines custom column name for the query param
-//			FullName string `filter:"searchable"`
-//		}
+//
+//	type User struct {
+//		gorm.Model
+//		Username string `gorm:"uniqueIndex" filter:"param:login;searchable;filterable"`
+//		// `param` defines custom column name for the query param
+//		FullName string `filter:"searchable"`
+//	}
 func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		var params queryParams
