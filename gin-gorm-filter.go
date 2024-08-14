@@ -97,23 +97,27 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 	} else {
 		paramName = columnName
 	}
-	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v(:|!=|>|<|>=|<=)(\w{1,}).*`, paramName))
+
+	// re, err := regexp.Compile(fmt.Sprintf(`(?m)%v([:<>!=]{1,2})(\w{1,}).*`, paramName))
+	// for the current regex, the compound operators (such as >=) must come before the
+	// single operators (such as <) or they will be incorrectly identified
+	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v(:|!=|>=|<=|>|<)([^,]*).*`, paramName))
 	if err != nil {
 		return nil
 	}
 	filterSubPhraseMatch := re.FindStringSubmatch(phrase)
 	if len(filterSubPhraseMatch) == 3 {
 		switch filterSubPhraseMatch[1] {
-		case ">":
-			return clause.Gt{Column: columnName, Value: filterSubPhraseMatch[2]}
-		case "<":
-			return clause.Lt{Column: columnName, Value: filterSubPhraseMatch[2]}
 		case ">=":
 			return clause.Gte{Column: columnName, Value: filterSubPhraseMatch[2]}
 		case "<=":
 			return clause.Lte{Column: columnName, Value: filterSubPhraseMatch[2]}
 		case "!=":
 			return clause.Neq{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case ">":
+			return clause.Gt{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case "<":
+			return clause.Lt{Column: columnName, Value: filterSubPhraseMatch[2]}
 		default:
 			return clause.Eq{Column: columnName, Value: filterSubPhraseMatch[2]}
 		}
