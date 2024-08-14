@@ -97,7 +97,7 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 	} else {
 		paramName = columnName
 	}
-	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v([:<>!=]{1,2})(\w{1,}).*`, paramName))
+	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v(:|!=|>|<|>=|<=)(\w{1,}).*`, paramName))
 	if err != nil {
 		return nil
 	}
