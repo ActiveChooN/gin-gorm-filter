@@ -17,13 +17,13 @@ import (
 )
 
 type queryParams struct {
-	Search         string `form:"search"`
-	Filter         string `form:"filter"`
-	Page           int    `form:"page,default=1"`
-	PageSize       int    `form:"page_size,default=10"`
-	All            bool   `form:"all,default=false"`
-	OrderBy        string `form:"order_by,default=id"`
-	OrderDirection string `form:"order_direction,default=desc,oneof=desc asc"`
+	Search         string   `form:"search"`
+	Filter         []string `form:"filter"`
+	Page           int      `form:"page,default=1"`
+	PageSize       int      `form:"page_size,default=10"`
+	All            bool     `form:"all,default=false"`
+	OrderBy        string   `form:"order_by,default=id"`
+	OrderDirection string   `form:"order_direction,default=desc,oneof=desc asc"`
 }
 
 const (
@@ -122,23 +122,30 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 }
 
 func expressionByField(
-	db *gorm.DB, phrase string, modelType reflect.Type,
+	db *gorm.DB, phrases []string, modelType reflect.Type,
 	operator func(reflect.StructField, string) clause.Expression,
 	predicate func(...clause.Expression) clause.Expression,
 ) *gorm.DB {
 	numFields := modelType.NumField()
-	expressions := make([]clause.Expression, 0, numFields)
-	for i := 0; i < numFields; i++ {
-		field := modelType.Field(i)
-		expression := operator(field, phrase)
-		if expression != nil {
-			expressions = append(expressions, expression)
+	var allExpressions []clause.Expression
+
+	for _, phrase := range phrases {
+		expressions := make([]clause.Expression, 0, numFields)
+		for i := 0; i < numFields; i++ {
+			field := modelType.Field(i)
+			expression := operator(field, phrase)
+			if expression != nil {
+				expressions = append(expressions, expression)
+			}
+		}
+		if len(expressions) > 0 {
+			allExpressions = append(allExpressions, predicate(expressions...))
 		}
 	}
-	if len(expressions) == 1 {
-		db = db.Where(expressions[0])
-	} else if len(expressions) > 1 {
-		db = db.Where(predicate(expressions...))
+	if len(allExpressions) == 1 {
+		db = db.Where(allExpressions[0])
+	} else if len(allExpressions) > 1 {
+		db = db.Where(predicate(allExpressions...))
 	}
 	return db
 }
@@ -173,9 +180,9 @@ func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 		modelType := reflect.TypeOf(model)
 		if model != nil && modelType.Kind() == reflect.Ptr && modelType.Elem().Kind() == reflect.Struct {
 			if config&SEARCH > 0 && params.Search != "" {
-				db = expressionByField(db, params.Search, modelType.Elem(), searchField, clause.Or)
+				db = expressionByField(db, []string{params.Search}, modelType.Elem(), searchField, clause.Or)
 			}
-			if config&FILTER > 0 && params.Filter != "" {
+			if config&FILTER > 0 && len(params.Filter) > 0 {
 				db = expressionByField(db, params.Filter, modelType.Elem(), filterField, clause.And)
 			}
 		}

@@ -63,7 +63,7 @@ func (s *TestSuite) TearDownTest() {
 	db.Close()
 }
 
-// TestFiltersBasic is a test suite for basic filters functionality.
+// TestFiltersBasic is a test for basic filters functionality.
 func (s *TestSuite) TestFiltersBasic() {
 	var users []User
 	ctx := gin.Context{}
@@ -73,8 +73,8 @@ func (s *TestSuite) TestFiltersBasic() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" = \$1`).
-		WithArgs("sampleUser").
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" = \$1 ORDER BY "id" DESC LIMIT \$2$`).
+		WithArgs("sampleUser", 10).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
 	s.NoError(err)
@@ -89,9 +89,9 @@ func (s *TestSuite) TestFiltersNotFilterable() {
 			RawQuery: "filter=password:samplePassword",
 		},
 	}
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" ORDER`).
+	s.mock.ExpectQuery(`^SELECT \* FROM "users"$`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
-	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
 
@@ -198,14 +198,14 @@ func (s *TestSuite) TestFiltersSearchable() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \("Username" LIKE \$1 OR "FullName" LIKE \$2\)`).
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \("Username" LIKE \$1 OR "FullName" LIKE \$2\)$`).
 		WithArgs("%John%", "%John%").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
-	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, SEARCH)).Find(&users).Error
 	s.NoError(err)
 }
 
-// TestFiltersPaginateOnly is a test suite for pagination functionality.
+// TestFiltersPaginateOnly is a test for pagination functionality.
 func (s *TestSuite) TestFiltersPaginateOnly() {
 	var users []User
 	ctx := gin.Context{}
@@ -215,13 +215,14 @@ func (s *TestSuite) TestFiltersPaginateOnly() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" ORDER BY "id" DESC LIMIT 10 OFFSET 10$`).
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" ORDER BY "id" DESC LIMIT \$1 OFFSET \$2$`).
+		WithArgs(10, 10).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
 	s.NoError(err)
 }
 
-// TestFiltersOrderBy is a test suite for order by functionality.
+// TestFiltersOrderBy is a test for order by functionality.
 func (s *TestSuite) TestFiltersOrderBy() {
 	var users []User
 	ctx := gin.Context{}
@@ -234,6 +235,42 @@ func (s *TestSuite) TestFiltersOrderBy() {
 	s.mock.ExpectQuery(`^SELECT \* FROM "users" ORDER BY "Email"$`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ORDER_BY)).Find(&users).Error
+	s.NoError(err)
+}
+
+// TestFiltersAndSearcg is test for filtering and searching simultaneously.
+func (s *TestSuite) TestFiltersAndSearch() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=login:sampleUser&search=John",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \("Username" LIKE \$1 OR "FullName" LIKE \$2\) AND "Username" = \$3$`).
+		WithArgs("%John%", "%John%", "sampleUser").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER|SEARCH)).Find(&users).Error
+	s.NoError(err)
+}
+
+// TestFiltersMultipleColumns is a test for filtering on multiple columns.
+func (s *TestSuite) TestFiltersMultipleColumns() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=login:sampleUser&filter=Email:john@example.com",
+		},
+	}
+
+	s.mock.ExpectQuery(`SELECT \* FROM "users" WHERE "Username" = \$1 AND "Email" = \$2$`).
+		WithArgs("sampleUser", "john@example.com").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
 
