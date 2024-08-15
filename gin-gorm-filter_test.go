@@ -198,8 +198,8 @@ func (s *TestSuite) TestFiltersSearchable() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \("Username" LIKE \$1 OR "FullName" LIKE \$2\)$`).
-		WithArgs("%John%", "%John%").
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \(LOWER\(\$1\) LIKE \$2 OR LOWER\(\$3\) LIKE \$4\)$`).
+		WithArgs("Username", "%john%", "FullName", "%john%").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, SEARCH)).Find(&users).Error
 	s.NoError(err)
@@ -248,8 +248,8 @@ func (s *TestSuite) TestFiltersAndSearch() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \("Username" LIKE \$1 OR "FullName" LIKE \$2\) AND "Username" = \$3$`).
-		WithArgs("%John%", "%John%", "sampleUser").
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \(LOWER\(\$1\) LIKE \$2 OR LOWER\(\$3\) LIKE \$4\) AND "Username" = \$5$`).
+		WithArgs("Username", "%john%", "FullName", "%john%", "sampleUser").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
 
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER|SEARCH)).Find(&users).Error
