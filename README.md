@@ -55,6 +55,7 @@ curl -X GET http://localhost:8080/users?page=1&limit=10&order_by=username&order_
 
 ## TODO list
 - [x] Write tests for the lib with CI integration
-- [ ] Add ILIKE integration for PostgreSQL database
+- [x] Add support for case-insensitive search
 - [x] Add other filters, like > or !=
 - [x] Add support for multiple filters in one query
+- [ ] Add suport for filtering for related models
