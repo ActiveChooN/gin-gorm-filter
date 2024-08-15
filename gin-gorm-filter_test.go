@@ -20,7 +20,7 @@ import (
 )
 
 type User struct {
-	Id       int64
+	Id       int64  `filter:"param:id;filterable"`
 	Username string `filter:"param:login;searchable;filterable"`
 	FullName string `filter:"param:name;searchable"`
 	Email    string `filter:"filterable"`
@@ -111,7 +111,84 @@ func (s *TestSuite) TestFiltersNoFilterConfig() {
 	s.NoError(err)
 }
 
-// TestFiltersSearchable is a test for searchable filters functionality.
+// Filtering would not be applied if no config is provided.
+func (s *TestSuite) TestFiltersNotEqualTo() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=id!=22",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" <> \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
+	s.NoError(err)
+}
+
+func (s *TestSuite) TestFiltersLessThan() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=login<Phil",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" < \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
+	s.NoError(err)
+}
+
+// Filtering would not be applied if no config is provided.
+func (s *TestSuite) TestFiltersLessThanOrEqualTo() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=id<=200",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" <= \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
+	s.NoError(err)
+}
+
+func (s *TestSuite) TestFiltersGreaterThan() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=id>100",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" > \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
+	s.NoError(err)
+}
+
+func (s *TestSuite) TestFiltersGreaterThanOrEqualTo() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=id>=99",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" >= \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
+	s.NoError(err)
+}
+
+// TestFiltersSearchable is a test suite for searchable filters functionality.
 func (s *TestSuite) TestFiltersSearchable() {
 	var users []User
 	ctx := gin.Context{}
