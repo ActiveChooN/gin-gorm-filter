@@ -80,6 +80,23 @@ func (s *TestSuite) TestFiltersBasic() {
 	s.NoError(err)
 }
 
+// TestFiltersBasic is a test for basic filters functionality.
+func (s *TestSuite) TestFiltersLike() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=login~samp",
+		},
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" LIKE \$1 ORDER BY "id" DESC LIMIT \$2$`).
+		WithArgs("samp", 10).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
+	s.NoError(err)
+}
+
 // Filtering for a field that is not filtered should not be performed
 func (s *TestSuite) TestFiltersNotFilterable() {
 	var users []User

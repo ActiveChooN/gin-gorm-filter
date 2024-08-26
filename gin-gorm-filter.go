@@ -104,7 +104,7 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 	// re, err := regexp.Compile(fmt.Sprintf(`(?m)%v([:<>!=]{1,2})(\w{1,}).*`, paramName))
 	// for the current regex, the compound operators (such as >=) must come before the
 	// single operators (such as <) or they will be incorrectly identified
-	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v(:|!=|>=|<=|>|<)([^,]*).*`, paramName))
+	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v(:|!=|>=|<=|>|<|~)([^,]*).*`, paramName))
 	if err != nil {
 		return nil
 	}
@@ -121,6 +121,8 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 			return clause.Gt{Column: columnName, Value: filterSubPhraseMatch[2]}
 		case "<":
 			return clause.Lt{Column: columnName, Value: filterSubPhraseMatch[2]}
+		case "~":
+			return clause.Like{Column: columnName, Value: filterSubPhraseMatch[2]}
 		default:
 			return clause.Eq{Column: columnName, Value: filterSubPhraseMatch[2]}
 		}
