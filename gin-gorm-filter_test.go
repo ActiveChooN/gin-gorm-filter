@@ -19,11 +19,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type Organization struct {
+	Id   uint   `filter:"param:id;filterable"`
+	Name string `filter:"param:name;searchable"`
+}
+
 type User struct {
-	Id       int64  `filter:"param:id;filterable"`
-	Username string `filter:"param:login;searchable;filterable"`
-	FullName string `filter:"param:name;searchable"`
-	Email    string `filter:"filterable"`
+	Id             uint   `filter:"param:id;filterable"`
+	Username       string `filter:"param:login;searchable;filterable"`
+	FullName       string `filter:"param:name;searchable"`
+	Email          string `filter:"filterable"`
+	OrganizationId uint
+	Organization   Organization
 	// This field is not filtered.
 	Password string
 }
@@ -73,9 +80,9 @@ func (s *TestSuite) TestFiltersBasic() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" = \$1 ORDER BY "id" DESC LIMIT \$2$`).
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."username" = \$1 ORDER BY "id" DESC LIMIT \$2$`).
 		WithArgs("sampleUser", 10).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
 	s.NoError(err)
 }
@@ -90,9 +97,9 @@ func (s *TestSuite) TestFiltersLike() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" LIKE \$1 ORDER BY "id" DESC LIMIT \$2$`).
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."username" LIKE \$1 ORDER BY "id" DESC LIMIT \$2$`).
 		WithArgs("samp", 10).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
 	s.NoError(err)
 }
@@ -107,7 +114,7 @@ func (s *TestSuite) TestFiltersNotFilterable() {
 		},
 	}
 	s.mock.ExpectQuery(`^SELECT \* FROM "users"$`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
@@ -123,7 +130,7 @@ func (s *TestSuite) TestFiltersNoFilterConfig() {
 	}
 
 	s.mock.ExpectQuery(`^SELECT \* FROM "users"$`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, SEARCH)).Find(&users).Error
 	s.NoError(err)
 }
@@ -138,8 +145,8 @@ func (s *TestSuite) TestFiltersNotEqualTo() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" <> \$1`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."id" <> \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
@@ -153,8 +160,8 @@ func (s *TestSuite) TestFiltersLessThan() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Username" < \$1`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."username" < \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
@@ -169,8 +176,8 @@ func (s *TestSuite) TestFiltersLessThanOrEqualTo() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" <= \$1`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."id" <= \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
@@ -184,8 +191,8 @@ func (s *TestSuite) TestFiltersGreaterThan() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" > \$1`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."id" > \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
@@ -199,8 +206,8 @@ func (s *TestSuite) TestFiltersGreaterThanOrEqualTo() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "Id" >= \$1`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."id" >= \$1`).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
 	s.NoError(err)
 }
@@ -215,9 +222,9 @@ func (s *TestSuite) TestFiltersSearchable() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \(LOWER\(\$1\) LIKE \$2 OR LOWER\(\$3\) LIKE \$4\)$`).
-		WithArgs("Username", "%john%", "FullName", "%john%").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \(LOWER\("users"."username"\) LIKE \$1 OR LOWER\("users"."full_name"\) LIKE \$2\)$`).
+		WithArgs("%john%", "%john%").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, SEARCH)).Find(&users).Error
 	s.NoError(err)
 }
@@ -234,7 +241,7 @@ func (s *TestSuite) TestFiltersPaginateOnly() {
 
 	s.mock.ExpectQuery(`^SELECT \* FROM "users" ORDER BY "id" DESC LIMIT \$1 OFFSET \$2$`).
 		WithArgs(10, 10).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ALL)).Find(&users).Error
 	s.NoError(err)
 }
@@ -250,7 +257,7 @@ func (s *TestSuite) TestFiltersOrderBy() {
 	}
 
 	s.mock.ExpectQuery(`^SELECT \* FROM "users" ORDER BY "Email"$`).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, ORDER_BY)).Find(&users).Error
 	s.NoError(err)
 }
@@ -265,9 +272,9 @@ func (s *TestSuite) TestFiltersAndSearch() {
 		},
 	}
 
-	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \(LOWER\(\$1\) LIKE \$2 OR LOWER\(\$3\) LIKE \$4\) AND "Username" = \$5$`).
-		WithArgs("Username", "%john%", "FullName", "%john%", "sampleUser").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE \(LOWER\("users"."username"\) LIKE \$1 OR LOWER\("users"."full_name"\) LIKE \$2\) AND "users"."username" = \$3$`).
+		WithArgs("%john%", "%john%", "sampleUser").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER|SEARCH)).Find(&users).Error
 	s.NoError(err)
@@ -279,15 +286,33 @@ func (s *TestSuite) TestFiltersMultipleColumns() {
 	ctx := gin.Context{}
 	ctx.Request = &http.Request{
 		URL: &url.URL{
-			RawQuery: "filter=login:sampleUser&filter=Email:john@example.com",
+			RawQuery: "filter=login:sampleUser&filter=email:john@example.com",
 		},
 	}
 
-	s.mock.ExpectQuery(`SELECT \* FROM "users" WHERE "Username" = \$1 AND "Email" = \$2$`).
+	s.mock.ExpectQuery(`SELECT \* FROM "users" WHERE "users"."username" = \$1 AND "users"."email" = \$2$`).
 		WithArgs("sampleUser", "john@example.com").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "Username", "FullName", "Email", "Password"}))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Find(&users).Error
+	s.NoError(err)
+}
+
+// TestFiltersWithJoin is a test for filtering with join.
+func (s *TestSuite) TestFiltersWithJoin() {
+	var users []User
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "filter=id!=22",
+		},
+	}
+
+	s.mock.ExpectQuery(`SELECT "users"."id","users"."username","users"."full_name","users"."email","users"."organization_id","users"."password","Organization"."id" AS "Organization__id","Organization"."name" AS "Organization__name" FROM "users" LEFT JOIN "organizations" "Organization" ON "users"."organization_id" = "Organization"."id" WHERE "users"."id" <> \$1$`).
+		WithArgs("22").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
+
+	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, FILTER)).Joins("Organization").Find(&users).Error
 	s.NoError(err)
 }
 
