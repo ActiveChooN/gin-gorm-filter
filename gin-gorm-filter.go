@@ -10,10 +10,12 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/schema"
 )
 
 type queryParams struct {
@@ -36,8 +38,7 @@ const (
 )
 
 var (
-	columnNameRegexp = regexp.MustCompile(`(?m)column:(\w{1,}).*`)
-	paramNameRegexp  = regexp.MustCompile(`(?m)param:(\w{1,}).*`)
+	paramNameRegexp = regexp.MustCompile(`(?m)param:(\w{1,}).*`)
 )
 
 func orderBy(db *gorm.DB, params queryParams) *gorm.DB {
@@ -67,33 +68,23 @@ func paginate(db *gorm.DB, params queryParams) *gorm.DB {
 	return db.Offset(offset).Limit(params.PageSize)
 }
 
-func getColumnNameForField(field reflect.StructField) string {
-	fieldTag := field.Tag.Get("gorm")
-	res := columnNameRegexp.FindStringSubmatch(fieldTag)
-	if len(res) == 2 {
-		return res[1]
-	}
-	return field.Name
-}
-
-func searchField(field reflect.StructField, phrase string) clause.Expression {
+func searchField(columnName string, field reflect.StructField, phrase string) clause.Expression {
 	filterTag := field.Tag.Get(tagKey)
-	columnName := getColumnNameForField(field)
+
 	if strings.Contains(filterTag, "searchable") {
 		return clause.Like{
-			Column: clause.Expr{SQL: "LOWER(?)", Vars: []interface{}{columnName}},
+			Column: clause.Expr{SQL: "LOWER(?)", Vars: []interface{}{clause.Column{Table: clause.CurrentTable, Name: columnName}}},
 			Value:  "%" + strings.ToLower(phrase) + "%",
 		}
 	}
 	return nil
 }
 
-func filterField(field reflect.StructField, phrase string) clause.Expression {
+func filterField(columnName string, field reflect.StructField, phrase string) clause.Expression {
 	var paramName string
 	if !strings.Contains(field.Tag.Get(tagKey), "filterable") {
 		return nil
 	}
-	columnName := getColumnNameForField(field)
 	paramMatch := paramNameRegexp.FindStringSubmatch(field.Tag.Get(tagKey))
 	if len(paramMatch) == 2 {
 		paramName = paramMatch[1]
@@ -112,37 +103,42 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 	if len(filterSubPhraseMatch) == 3 {
 		switch filterSubPhraseMatch[1] {
 		case ">=":
-			return clause.Gte{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Gte{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		case "<=":
-			return clause.Lte{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Lte{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		case "!=":
-			return clause.Neq{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Neq{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		case ">":
-			return clause.Gt{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Gt{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		case "<":
-			return clause.Lt{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Lt{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		case "~":
-			return clause.Like{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Like{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		default:
-			return clause.Eq{Column: columnName, Value: filterSubPhraseMatch[2]}
+			return clause.Eq{Column: clause.Column{Table: clause.CurrentTable, Name: columnName}, Value: filterSubPhraseMatch[2]}
 		}
 	}
 	return nil
 }
 
 func expressionByField(
-	db *gorm.DB, phrases []string, modelType reflect.Type,
-	operator func(reflect.StructField, string) clause.Expression,
+	db *gorm.DB, phrases []string,
+	operator func(string, reflect.StructField, string) clause.Expression,
 	predicate func(...clause.Expression) clause.Expression,
 ) *gorm.DB {
+	modelType := reflect.TypeOf(db.Statement.Model).Elem()
 	numFields := modelType.NumField()
+	modelSchema, err := schema.Parse(db.Statement.Model, &sync.Map{}, db.NamingStrategy)
+	if err != nil {
+		return db
+	}
 	var allExpressions []clause.Expression
 
 	for _, phrase := range phrases {
 		expressions := make([]clause.Expression, 0, numFields)
 		for i := 0; i < numFields; i++ {
 			field := modelType.Field(i)
-			expression := operator(field, phrase)
+			expression := operator(modelSchema.LookUpField(field.Name).DBName, field, phrase)
 			if expression != nil {
 				expressions = append(expressions, expression)
 			}
@@ -189,10 +185,10 @@ func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 		modelType := reflect.TypeOf(model)
 		if model != nil && modelType.Kind() == reflect.Ptr && modelType.Elem().Kind() == reflect.Struct {
 			if config&SEARCH > 0 && params.Search != "" {
-				db = expressionByField(db, []string{params.Search}, modelType.Elem(), searchField, clause.Or)
+				db = expressionByField(db, []string{params.Search}, searchField, clause.Or)
 			}
 			if config&FILTER > 0 && len(params.Filter) > 0 {
-				db = expressionByField(db, params.Filter, modelType.Elem(), filterField, clause.And)
+				db = expressionByField(db, params.Filter, filterField, clause.And)
 			}
 		}
 
