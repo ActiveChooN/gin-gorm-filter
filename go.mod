@@ -1,6 +1,6 @@
 module github.com/ActiveChooN/gin-gorm-filter
 
-go 1.26.4
+go 1.26.3
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
