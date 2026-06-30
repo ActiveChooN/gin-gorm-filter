@@ -67,7 +67,8 @@ func (s *TestSuite) SetupTest() {
 func (s *TestSuite) TearDownTest() {
 	db, err := s.db.DB()
 	require.NoError(s.T(), err)
-	db.Close()
+	s.mock.ExpectClose()
+	require.NoError(s.T(), db.Close())
 }
 
 // TestFiltersBasic is a test for basic filters functionality.
