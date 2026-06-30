@@ -73,7 +73,7 @@ func searchField(columnName string, field reflect.StructField, phrase string) cl
 
 	if strings.Contains(filterTag, "searchable") {
 		return clause.Like{
-			Column: clause.Expr{SQL: "LOWER(?)", Vars: []interface{}{clause.Column{Table: clause.CurrentTable, Name: columnName}}},
+			Column: clause.Expr{SQL: "LOWER(?)", Vars: []any{clause.Column{Table: clause.CurrentTable, Name: columnName}}},
 			Value:  "%" + strings.ToLower(phrase) + "%",
 		}
 	}
@@ -136,7 +136,7 @@ func expressionByField(
 
 	for _, phrase := range phrases {
 		expressions := make([]clause.Expression, 0, numFields)
-		for i := 0; i < numFields; i++ {
+		for i := range numFields {
 			field := modelType.Field(i)
 			expression := operator(modelSchema.LookUpField(field.Name).DBName, field, phrase)
 			if expression != nil {
@@ -183,7 +183,7 @@ func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 
 		model := db.Statement.Model
 		modelType := reflect.TypeOf(model)
-		if model != nil && modelType.Kind() == reflect.Ptr && modelType.Elem().Kind() == reflect.Struct {
+		if model != nil && modelType.Kind() == reflect.Pointer && modelType.Elem().Kind() == reflect.Struct {
 			if config&SEARCH > 0 && params.Search != "" {
 				db = expressionByField(db, []string{params.Search}, searchField, clause.Or)
 			}
