@@ -88,6 +88,36 @@ func (s *TestSuite) TestFiltersBasic() {
 	s.NoError(err)
 }
 
+func (s *TestSuite) TestFiltersByQueryParamsBasic() {
+	var users []User
+	params := QueryParams{
+		Filter:         []string{"login:sampleUser"},
+		Page:           1,
+		PageSize:       10,
+		OrderBy:        "id",
+		OrderDirection: "desc",
+	}
+
+	s.mock.ExpectQuery(`^SELECT \* FROM "users" WHERE "users"."username" = \$1 ORDER BY "id" DESC LIMIT \$2$`).
+		WithArgs("sampleUser", 10).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
+	err := s.db.Model(&User{}).Scopes(FilterByQueryParams(params, ALL)).Find(&users).Error
+	s.NoError(err)
+}
+
+func (s *TestSuite) TestQueryParamsBindingValidationCanBeHandledByCaller() {
+	ctx := gin.Context{}
+	ctx.Request = &http.Request{
+		URL: &url.URL{
+			RawQuery: "order_direction=sideways",
+		},
+	}
+
+	var params QueryParams
+	err := ctx.ShouldBindQuery(&params)
+	s.Error(err)
+}
+
 // TestFiltersBasic is a test for basic filters functionality.
 func (s *TestSuite) TestFiltersLike() {
 	var users []User

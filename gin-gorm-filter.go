@@ -18,14 +18,15 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-type queryParams struct {
+// QueryParams contains supported filter options parsed from request query parameters.
+type QueryParams struct {
 	Search         string   `form:"search"`
 	Filter         []string `form:"filter"`
 	Page           int      `form:"page,default=1"`
 	PageSize       int      `form:"page_size,default=10"`
 	All            bool     `form:"all,default=false"`
 	OrderBy        string   `form:"order_by,default=id"`
-	OrderDirection string   `form:"order_direction,default=desc,oneof=desc asc"`
+	OrderDirection string   `form:"order_direction,default=desc" binding:"oneof=desc asc"`
 }
 
 const (
@@ -41,14 +42,14 @@ var (
 	paramNameRegexp = regexp.MustCompile(`(?m)param:(\w{1,}).*`)
 )
 
-func orderBy(db *gorm.DB, params queryParams) *gorm.DB {
+func orderBy(db *gorm.DB, params QueryParams) *gorm.DB {
 	return db.Order(clause.OrderByColumn{
 		Column: clause.Column{Name: params.OrderBy},
 		Desc:   params.OrderDirection == "desc"},
 	)
 }
 
-func paginate(db *gorm.DB, params queryParams) *gorm.DB {
+func paginate(db *gorm.DB, params QueryParams) *gorm.DB {
 	if params.All {
 		return db
 	}
@@ -159,11 +160,11 @@ func expressionByField(
 // Note: Don't forget to initialize DB Model first, otherwise filter and search won't work
 // Example:
 //
-//	db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.ALL)).Find(&users)
+//	db.Model(&UserModel).Scopes(filter.FilterByQueryParams(params, filter.ALL)).Find(&users)
 //
 // Or if only pagination and order is needed:
 //
-//	db.Model(&UserModel).Scope(filter.FilterByQuery(ctx, filter.PAGINATION|filter.ORDER_BY)).Find(&users)
+//	db.Model(&UserModel).Scopes(filter.FilterByQueryParams(params, filter.PAGINATE|filter.ORDER_BY)).Find(&users)
 //
 // And models should have appropriate`filter` tags:
 //
@@ -173,14 +174,8 @@ func expressionByField(
 //		// `param` defines custom column name for the query param
 //		FullName string `filter:"searchable"`
 //	}
-func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
+func FilterByQueryParams(params QueryParams, config int) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		var params queryParams
-		err := c.BindQuery(&params)
-		if err != nil {
-			return db
-		}
-
 		model := db.Statement.Model
 		modelType := reflect.TypeOf(model)
 		if model != nil && modelType.Kind() == reflect.Pointer && modelType.Elem().Kind() == reflect.Struct {
@@ -199,5 +194,21 @@ func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
 			db = paginate(db, params)
 		}
 		return db
+	}
+}
+
+// FilterByQuery filters DB requests with query parameters from a Gin context.
+//
+// Deprecated: bind query parameters in the handler and use FilterByQueryParams
+// so BindQuery/ShouldBindQuery errors can be handled by the caller.
+func FilterByQuery(c *gin.Context, config int) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		var params QueryParams
+		err := c.BindQuery(&params)
+		if err != nil {
+			return db
+		}
+
+		return FilterByQueryParams(params, config)(db)
 	}
 }

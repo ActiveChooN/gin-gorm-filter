@@ -34,9 +34,16 @@ type UserModel struct {
 func GetUsers(c *gin.Context) {
 	var users []UserModel
 	var usersCount int64
+	var params filter.QueryParams
+
+	if err := c.ShouldBindQuery(&params); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
 	db, err := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
 	err := db.Model(&UserModel{}).Scopes(
-		filter.FilterByQuery(c, filter.ALL),
+		filter.FilterByQueryParams(params, filter.ALL),
 	).Count(&usersCount).Find(&users).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
@@ -46,11 +53,11 @@ func GetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, serializer.Response())
 }
 ```
-Any filter combination can be used here `filter.PAGINATION|filter.ORDER_BY` e.g. **Important note:** GORM model should be initialize first for DB, otherwise filter and search won't work
+Any filter combination can be used here `filter.PAGINATE|filter.ORDER_BY` e.g. **Important note:** GORM model should be initialize first for DB, otherwise filter and search won't work
 
 ## Request example
 ```(shell)
-curl -X GET http://localhost:8080/users?page=1&limit=10&order_by=username&order_direction=asc&filter="name:John"
+curl -X GET http://localhost:8080/users?page=1&page_size=10&order_by=username&order_direction=asc&filter="name:John"
 ```
 
 ## Supported filter operators
