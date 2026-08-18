@@ -139,7 +139,11 @@ func expressionByField(
 		expressions := make([]clause.Expression, 0, numFields)
 		for i := range numFields {
 			field := modelType.Field(i)
-			expression := operator(modelSchema.LookUpField(field.Name).DBName, field, phrase)
+			schemaField := modelSchema.LookUpField(field.Name)
+			if schemaField == nil {
+				continue
+			}
+			expression := operator(schemaField.DBName, field, phrase)
 			if expression != nil {
 				expressions = append(expressions, expression)
 			}
