@@ -35,6 +35,15 @@ type User struct {
 	Password string
 }
 
+type EmbeddedFields struct {
+	Id uint
+}
+
+type UserWithEmbeddedFields struct {
+	EmbeddedFields
+	Name string `filter:"searchable"`
+}
+
 type TestSuite struct {
 	suite.Suite
 	db   *gorm.DB
@@ -258,6 +267,17 @@ func (s *TestSuite) TestFiltersSearchable() {
 		WillReturnRows(sqlmock.NewRows([]string{"id", "username", "full_name", "email", "password"}))
 	err := s.db.Model(&User{}).Scopes(FilterByQuery(&ctx, SEARCH)).Find(&users).Error
 	s.NoError(err)
+}
+
+func (s *TestSuite) TestFiltersSkipFieldsMissingFromSchema() {
+	var users []UserWithEmbeddedFields
+	query := s.db.Session(&gorm.Session{DryRun: true}).Model(&UserWithEmbeddedFields{}).Scopes(
+		FilterByQueryParams(QueryParams{Search: "John"}, SEARCH),
+	).Find(&users)
+
+	s.NoError(query.Error)
+	s.Contains(query.Statement.SQL.String(), `LOWER("user_with_embedded_fields"."name") LIKE $1`)
+	s.Equal([]interface{}{"%john%"}, query.Statement.Vars)
 }
 
 // TestFiltersPaginateOnly is a test for pagination functionality.
